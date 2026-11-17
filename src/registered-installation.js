@@ -3,7 +3,9 @@ import {drawClippedBase} from './floating-scene.js';
 import {imageAsset} from './image-loader.js';
 import {PEOPLE_SCALE,PERSON_HEIGHT,technicalRooms,safeFoot,blockedFloor,installationFeet,stockingFeet,customerPaths,queueFeet,campaignQueueFeet,cashierStations,pathPoint} from './scene-layout.js';
 
-const root=import.meta.env.BASE_URL+'installation/registered/';
+const compactImages=matchMedia('(max-width:760px), (pointer:coarse)').matches;
+const root=import.meta.env.BASE_URL+(compactImages?'installation/mobile/layers/':'installation/registered/');
+const spriteFiles=['detergent-podium-v5','cashier-woman-v5','cashier-man-v5','plumber-v4','duct-ladder-v4','duct-helper-v4','technician-v4','electrician-v4','assembler-v4','shelf-fitter-v4','cold-fitter-v4','stock-crate-v4','stock-unpack-v4','shopper-woman-v4','shopper-man-v4','server-rack-v4','installer-drill-v3','installer-kneel-v3','worker-carton-v3','worker-stock-v3','shopper-basket-v3','shopper-trolley-v3','balloon-arch-v3','campaign-stand-v3','campaign-dangler-v3'];
 // Register the small drain line to the bottom of the excavated trench, including
 // the two well connections. This transforms only the independent pipe sprite.
 const drainOffsets=[[220,9],[365,-7],[550,-22],[1050,-8],[1400,-9],[1440,-14],[1580,-11]];
@@ -106,7 +108,12 @@ export function frontInstallation(stack,onReady){
  detail.innerHTML='<p id="installation-action"></p><div class="installation-steps"><span>تجهیزات خالی</span><span>جانمایی و نصب</span><span>مرچندایزینگ</span></div>';document.querySelector('#role-note').after(detail);
  let preloadJob;
  function preload(){return preloadJob??=(async()=>{
-  const load=file=>imageAsset(root+file+'.webp');
+  // Fetch a small number concurrently; consume in order to preserve layer matching.
+  const files=[...new Set(['ground-rough-v3','base-v3',...definitions.map(def=>def.file||def.name),...spriteFiles])],jobs=new Map();let cursor=0;
+  for(const file of files){let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b});promise.catch(()=>{});jobs.set(file,{promise,resolve,reject})}
+  async function worker(){while(cursor<files.length){const file=files[cursor++],job=jobs.get(file);try{job.resolve(await imageAsset(root+file+'.webp'))}catch(error){job.reject(error)}}}
+  for(let i=0;i<3;i++)worker();
+  const load=file=>jobs.get(file).promise;
   try{[state.roughBase,state.floorBase]=await Promise.all([load('ground-rough-v3'),load('base-v3')])}catch(e){state.errors.push(String(e))}
   for(const def of definitions){
    try{const image=await load(def.file||def.name);
@@ -132,7 +139,7 @@ export function frontInstallation(stack,onReady){
    }catch(e){state.errors.push(String(e))}
   }
   for(const layer of layers.values())delete layer.image;
-  for(const file of ['detergent-podium-v5','cashier-woman-v5','cashier-man-v5','plumber-v4','duct-ladder-v4','duct-helper-v4','technician-v4','electrician-v4','assembler-v4','shelf-fitter-v4','cold-fitter-v4','stock-crate-v4','stock-unpack-v4','shopper-woman-v4','shopper-man-v4','server-rack-v4','installer-drill-v3','installer-kneel-v3','worker-carton-v3','worker-stock-v3','shopper-basket-v3','shopper-trolley-v3','balloon-arch-v3','campaign-stand-v3','campaign-dangler-v3']){
+  for(const file of spriteFiles){
    try{const image=await load(file),c=document.createElement('canvas');c.width=image.width;c.height=image.height;const cx=c.getContext('2d',{willReadFrequently:true});cx.drawImage(image,0,0);const {data}=cx.getImageData(0,0,c.width,c.height);let l=c.width,t=c.height,r=0,b=0;
     for(let p=0;p<c.width*c.height;p++)if(data[p*4+3]>=8){const x=p%c.width,y=Math.floor(p/c.width);l=Math.min(l,x);r=Math.max(r,x);t=Math.min(t,y);b=Math.max(b,y)}
     sprites.set(file,{image,source:[l,t,r-l+1,b-t+1]});
