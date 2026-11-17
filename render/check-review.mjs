@@ -1,0 +1,14 @@
+import fs from 'node:fs/promises';
+const r=await fetch('http://127.0.0.1:9222/json/new?about:blank',{method:'PUT'}),page=await r.json();
+const ws=new WebSocket(page.webSocketDebuggerUrl);await new Promise(resolve=>ws.addEventListener('open',resolve,{once:true}));let id=0;const pending=new Map(),errors=[];
+ws.addEventListener('message',e=>{const m=JSON.parse(e.data);if(m.id){const p=pending.get(m.id);pending.delete(m.id);m.error?p.reject(m.error):p.resolve(m.result)}if(m.method==='Runtime.exceptionThrown')errors.push(m.params.exceptionDetails);if(m.method==='Network.responseReceived'&&m.params.response.status>=400)errors.push({url:m.params.response.url,status:m.params.response.status})});
+const call=(method,params={})=>new Promise((resolve,reject)=>{const n=++id;pending.set(n,{resolve,reject});ws.send(JSON.stringify({id:n,method,params}))});
+const evaluate=async(expression,userGesture=false)=>(await call('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true,userGesture})).result.value;
+await call('Runtime.enable');await call('Network.enable');await call('Page.enable');await call('Emulation.setDeviceMetricsOverride',{width:1440,height:1000,deviceScaleFactor:1,mobile:false});await call('Page.navigate',{url:'http://127.0.0.1:5173/render/review.html'});
+await new Promise(resolve=>setTimeout(resolve,1500));await evaluate(`document.fonts.ready.then(()=>new Promise(resolve=>{const i=document.querySelector('#render');if(i.complete)resolve();else{i.onload=resolve;i.onerror=resolve}}))`);
+const desktop=await evaluate(`({title:document.title,width:document.querySelector('#render').naturalWidth,height:document.querySelector('#render').naturalHeight,overflow:document.documentElement.scrollWidth>innerWidth,sourceLink:document.querySelector('a[href$=".blend"]').getAttribute('href')})`);
+if(desktop.width!==1600||desktop.height!==1000)throw Error('Reference image missing or dimensions incorrect');
+await call('Page.bringToFront');await evaluate(`document.querySelector('#full').click()`,true);await new Promise(resolve=>setTimeout(resolve,200));const full=await evaluate('Boolean(document.fullscreenElement)');if(full)await evaluate('document.exitFullscreen()');
+const shot=await call('Page.captureScreenshot',{format:'png'});await fs.writeFile('render/output/review-desktop.png',Buffer.from(shot.data,'base64'));
+await call('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});await new Promise(resolve=>setTimeout(resolve,200));const mobile=await evaluate(`({overflow:document.documentElement.scrollWidth>innerWidth,width:innerWidth,imageLoaded:document.querySelector('#render').complete})`);
+const report={desktop,mobile,fullscreen:full,errors};await fs.writeFile('render/output/review-qa.json',JSON.stringify(report,null,2));console.log(JSON.stringify(report));ws.close();await fetch('http://127.0.0.1:9222/json/close/'+page.id);

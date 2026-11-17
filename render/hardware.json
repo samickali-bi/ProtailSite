@@ -1,0 +1,42 @@
+{
+  "version": "4.5.9 LTS",
+  "devices": [
+    {
+      "backend": "OPTIX",
+      "devices": [
+        {
+          "name": "11th Gen Intel Core i7-1165G7 @ 2.80GHz",
+          "type": "CPU"
+        }
+      ]
+    },
+    {
+      "backend": "CUDA",
+      "devices": [
+        {
+          "name": "11th Gen Intel Core i7-1165G7 @ 2.80GHz",
+          "type": "CPU"
+        }
+      ]
+    },
+    {
+      "backend": "HIP",
+      "devices": [
+        {
+          "name": "11th Gen Intel Core i7-1165G7 @ 2.80GHz",
+          "type": "CPU"
+        }
+      ]
+    },
+    {
+      "backend": "ONEAPI",
+      "devices": [
+        {
+          "name": "11th Gen Intel Core i7-1165G7 @ 2.80GHz",
+          "type": "CPU"
+        }
+      ]
+    }
+  ],
+  "selected": "CPU"
+}

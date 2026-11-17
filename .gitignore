@@ -1,0 +1,17 @@
+node_modules/
+dist/
+.npm-cache/
+artifacts/chrome-profile/
+artifacts/scroll-browser/
+artifacts/narrative-chrome/
+render/tools/
+render/config/
+render/user-data/
+render/user-scripts/
+render/output/*.blend1
+artifacts/
+render/assets/
+render/output/
+.env
+.env.*
+!.env.example
