@@ -37,6 +37,8 @@ dialog{background:#111;color:#eeeae2;border-color:#ffffff26}dialog::backdrop{bac
 @media(max-height:700px) and (min-width:761px){.narrative-card{justify-content:flex-start;padding:16px 0}.chapter-content{max-height:100%;overflow:auto}}
 
 /* Floating store: one seamless black stage with an unframed narrative. */
+.visual-panel{touch-action:pan-y pinch-zoom}.scene-art{pointer-events:none}.scene-art img{-webkit-user-drag:none}
+@media(hover:none) and (pointer:coarse){.scene-art{filter:none!important}#front-installation{transform:translateZ(0);backface-visibility:hidden}}
 :root{background:#000;color:#eeeae2}html{scrollbar-width:none}html::-webkit-scrollbar{display:none}body,.pinned-scene{background:#000}.site-header{background:#000e;border:0;backdrop-filter:none}.pinned-scene{grid-template-columns:25% 75%;padding:0 3%;isolation:isolate}.visual-panel{position:relative;z-index:2;padding:0 4% 0 3%;justify-content:center}.store-figure{flex:none;height:100%;justify-content:center}.store-figure #image-stack{flex:none;width:100%;height:78%;background:transparent;border:0;border-radius:0;overflow:visible;display:flex;align-items:center;justify-content:center}.scene-art{position:relative;flex:none;filter:drop-shadow(0 18px 22px #0008)}
 .visual-panel figcaption,.image-controls,#service-tabs{display:none!important}
 .chapter-panel{z-index:3;padding:0 4% 0 10%;background:transparent;border:0;box-shadow:none;mask-image:linear-gradient(transparent,#000 12%,#000 78%,transparent)}

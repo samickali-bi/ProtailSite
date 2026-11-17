@@ -3,9 +3,11 @@ import {weights,starts,end,phaseAt,progressFor,smooth} from './installation-time
 import {frontInstallation,installationParts} from './registered-installation.js';
 import {frames,groups} from './journey.js';
 import {floatingScene,clipSceneImage} from './floating-scene.js';
+import {imageAsset} from './image-loader.js';
 const $=s=>document.querySelector(s),fa=n=>String(n).replace(/\d/g,d=>'۰۱۲۳۴۵۶۷۸۹'[d]);
 const clamp=(n,a=0,b=1)=>Math.max(a,Math.min(b,n));
 const last=frames.length-1,reduced=matchMedia('(prefers-reduced-motion: reduce)');
+const compactImages=matchMedia('(max-width:760px), (pointer:coarse)').matches;
 // A fresh visit starts at frame one instead of restoring the previous scroll.
 history.scrollRestoration='manual';
 scrollTo({top:0,behavior:'instant'});
@@ -52,15 +54,12 @@ frames.forEach((frame,i)=>{
 groups.forEach(([id,name])=>{const b=document.createElement('button');b.textContent=name;b.onclick=()=>go(frames.findIndex(f=>f.group===id));tabButtons.push([id,b]);$('#service-tabs').append(b)});
 function travel(){return Math.max(1,document.documentElement.scrollHeight-innerHeight)}
 function go(i,local=installationParts[i]?0:i>=6&&i<last?.92:0){scrollTo({top:progressFor(i,local)*travel(),behavior:reduced.matches||still?'instant':'smooth'})}
-function imagePath(i){const path=i===0?'installation/registered/site-v3.webp':i===2?'installation/registered/structure-floating-v6.png':i===3?'installation/registered/ground-rough-v3.webp':i>3?'installation/registered/base-v3.webp':`journey/${frames[i].asset}.webp`;return import.meta.env.BASE_URL+path}
+function imagePath(i){if(compactImages)return `${import.meta.env.BASE_URL}installation/mobile/scene-${Math.min(i,4)}.webp`;const path=i===0?'installation/registered/site-v3.webp':i===2?'installation/registered/structure-floating-v6.png':i===3?'installation/registered/ground-rough-v3.webp':i>3?'installation/registered/base-v3.webp':`journey/${frames[i].asset}.webp`;return import.meta.env.BASE_URL+path}
 function loadImage(i){
  if(cache.has(i))return Promise.resolve(cache.get(i));if(pending.has(i))return pending.get(i);
- const job=new Promise((resolve,reject)=>{
-  const im=new Image();im.decoding='async';im.onload=async()=>{try{await im.decode()}catch{}cache.set(i,im);failures.delete(i);metrics.imagesReady=cache.size;resolve(im);schedule()};
-  im.onerror=()=>{failures.add(i);pending.delete(i);reject(Error(`Frame failed: ${frames[i].asset}`))};im.src=imagePath(i);
- });pending.set(i,job);return job;
+ const job=imageAsset(imagePath(i)).then(im=>{cache.set(i,im);failures.delete(i);metrics.imagesReady=cache.size;schedule();return im}).catch(error=>{failures.add(i);pending.delete(i);throw error});pending.set(i,job);return job;
 }
-function requestNearby(i){for(const j of [i,i+1,i-1,i+2])if(j>=0&&j<=last&&!cache.has(j)&&!pending.has(j)&&!failures.has(j))loadImage(j).catch(()=>schedule())}
+function requestNearby(i){for(const j of [i>=3?4:i,i,i+1,i-1,i+2])if(j>=0&&j<=last&&!cache.has(j)&&!pending.has(j)&&!failures.has(j))loadImage(j).catch(()=>schedule())}
 function updateText(i){
  if(i===current)return;current=i;const frame=frames[i];
  $('#chapter-number').textContent=`${fa(String(i+1).padStart(2,'0'))} / ${fa(frames.length)}`;
@@ -95,7 +94,7 @@ function render(){
   if(i===17){$('#chapter-title').textContent=t<.42?'اول، طاق بادکنکی ورودی.':'بعد، اولین مشتری‌ها.';$('#chapter-copy').textContent=t<.42?'ابتدا طاق بادکنکی دم درِ ورودی آماده می‌شود؛ فروشگاه برای شروع افتتاح آماده است.':'مشتریان با سبد و ترولی از ورودی وارد می‌شوند و در راهروهای فروشگاه حرکت می‌کنند.'}
   if(installationParts[i])$('#next').innerHTML=t<.97?(i>=14?'ادامهٔ چیدمان <span>↓</span>':'ادامهٔ نصب <span>↓</span>'):'مرحلهٔ بعد <span>↓</span>';
  }
- scrollNarrative(i,t);
+ if(a)scrollNarrative(i,t);
  floating.update(position,!moving);
  metrics.progress=position;metrics.position=i+t;metrics.local=t;metrics.frame=Math.round((i+t)*100);
  $('#scrubber').value=Math.round(position*1000);$('#percent').textContent=fa(Math.round(position*100))+'٪';
@@ -116,7 +115,7 @@ addEventListener('keydown',e=>{
  if(dialog.open||e.altKey||e.ctrlKey||e.metaKey||e.target.closest('input,textarea,select,button,a,[contenteditable]'))return;
  const i=({ArrowDown:current+1,ArrowUp:current-1,PageDown:current+1,PageUp:current-1,Home:0,End:last})[e.key];if(i!==undefined){e.preventDefault();go(i)}
 });
-async function preload(){let cursor=1;async function worker(){while(cursor<=last){const i=cursor++;try{await loadImage(i)}catch{}}}await Promise.all([worker(),worker(),worker()])}
+async function preload(){await Promise.allSettled([loadImage(4),loadImage(1)]);for(const i of [3,2])try{await loadImage(i)}catch{}for(let i=5;i<=last;i++)loadImage(i).catch(()=>{})}
 async function init(){
  try{await loadImage(0);ready=true;metrics.loaded=true;await document.fonts.ready;onScroll();render();$('#load-status').hidden=true;preload();assembly.preload();if(new URLSearchParams(location.search).has('complete'))go(16,.98);const step=Number(new URLSearchParams(location.search).get('step'));if(step>=1&&step<=frames.length)go(step-1);const local=Number(new URLSearchParams(location.search).get('local'));if(step>=1&&step<=frames.length&&local>0&&local<1)go(step-1,local)}
  catch(e){metrics.errors.push(e.message);$('#load-status').hidden=true;$('#fallback').hidden=false}

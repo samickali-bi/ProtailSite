@@ -1,5 +1,6 @@
 import {smooth} from './installation-timeline.js';
 import {drawClippedBase} from './floating-scene.js';
+import {imageAsset} from './image-loader.js';
 import {PEOPLE_SCALE,PERSON_HEIGHT,technicalRooms,safeFoot,blockedFloor,installationFeet,stockingFeet,customerPaths,queueFeet,campaignQueueFeet,cashierStations,pathPoint} from './scene-layout.js';
 
 const root=import.meta.env.BASE_URL+'installation/registered/';
@@ -105,7 +106,7 @@ export function frontInstallation(stack,onReady){
  detail.innerHTML='<p id="installation-action"></p><div class="installation-steps"><span>تجهیزات خالی</span><span>جانمایی و نصب</span><span>مرچندایزینگ</span></div>';document.querySelector('#role-note').after(detail);
  let preloadJob;
  function preload(){return preloadJob??=(async()=>{
-  const load=async file=>{const image=new Image();image.src=root+file+'.webp';await image.decode();return image};
+  const load=file=>imageAsset(root+file+'.webp');
   try{[state.roughBase,state.floorBase]=await Promise.all([load('ground-rough-v3'),load('base-v3')])}catch(e){state.errors.push(String(e))}
   for(const def of definitions){
    try{const image=await load(def.file||def.name);
@@ -126,12 +127,16 @@ export function frontInstallation(stack,onReady){
      layer.parts=layer.parts.map(p=>({...p}));
     }
     layers.set(def.name,layer);state.layers.push({name:def.name,phase:def.phase,parts:result.parts.length,transparent:result.transparent});
+    // Paint each available layer instead of waiting for every chapter's assets.
+    onReady();await new Promise(resolve=>setTimeout(resolve,0));
    }catch(e){state.errors.push(String(e))}
   }
+  for(const layer of layers.values())delete layer.image;
   for(const file of ['detergent-podium-v5','cashier-woman-v5','cashier-man-v5','plumber-v4','duct-ladder-v4','duct-helper-v4','technician-v4','electrician-v4','assembler-v4','shelf-fitter-v4','cold-fitter-v4','stock-crate-v4','stock-unpack-v4','shopper-woman-v4','shopper-man-v4','server-rack-v4','installer-drill-v3','installer-kneel-v3','worker-carton-v3','worker-stock-v3','shopper-basket-v3','shopper-trolley-v3','balloon-arch-v3','campaign-stand-v3','campaign-dangler-v3']){
    try{const image=await load(file),c=document.createElement('canvas');c.width=image.width;c.height=image.height;const cx=c.getContext('2d',{willReadFrequently:true});cx.drawImage(image,0,0);const {data}=cx.getImageData(0,0,c.width,c.height);let l=c.width,t=c.height,r=0,b=0;
     for(let p=0;p<c.width*c.height;p++)if(data[p*4+3]>=8){const x=p%c.width,y=Math.floor(p/c.width);l=Math.min(l,x);r=Math.max(r,x);t=Math.min(t,y);b=Math.max(b,y)}
     sprites.set(file,{image,source:[l,t,r-l+1,b-t+1]});
+    onReady();await new Promise(resolve=>setTimeout(resolve,0));
    }catch(e){state.errors.push(String(e))}
   }
   state.ready=state.errors.length===0;onReady();
